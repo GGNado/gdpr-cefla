@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  # ---- Backend Spring Boot ----
+  gdpr-api:
+    build:
+      context: ./gdpr-user-portal-api
+      dockerfile: Dockerfile
+    container_name: gdpr-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # Sovrascrivi queste variabili per puntare al DB della VM
+      SPRING_DATASOURCE_URL: "jdbc:sqlserver://host.docker.internal:1433;databaseName=cefladb_iot;encrypt=false;"
+      SPRING_DATASOURCE_USERNAME: "sa"
+      SPRING_DATASOURCE_PASSWORD: "Password123!"
+    networks:
+      - gdpr-network
+
+  # ---- Frontend Angular + NGINX ----
+  gdpr-fe:
+    build:
+      context: ./gdpr-fe
+      dockerfile: Dockerfile
+    container_name: gdpr-fe
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - gdpr-api
+    networks:
+      - gdpr-network
+
+networks:
+  gdpr-network:
+    driver: bridge
