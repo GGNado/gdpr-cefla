@@ -1,0 +1,32 @@
+<div class="app-container">
+  <nav class="navbar">
+    <div class="nav-brand">
+      <img src="logo-cefla-quadrato.png" alt="Cefla Logo" class="brand-logo" />
+    </div>
+    <div class="nav-links">
+      <a href="javascript:void(0)" class="active">Dashboard</a>
+      <a href="javascript:void(0)">Log</a>
+      <a href="javascript:void(0)">Report</a>
+    </div>
+    <div class="nav-end">
+      <span class="nav-email">{{ email() }}</span>
+      <button class="btn-logout" (click)="logout()">Esci</button>
+    </div>
+  </nav>
+
+  <main class="content">
+    <router-outlet />
+  </main>
+
+  <footer class="footer">
+    <div class="footer-left">CEFLA S.C.</div>
+    <div class="footer-center">© 2026 Cefla S.C. Tutti i diritti riservati.</div>
+    <div class="footer-right">
+      <a href="javascript:void(0)">Informativa Privacy</a>
+      <a href="javascript:void(0)">Termini di Servizio</a>
+      <a href="javascript:void(0)" class="bold-link">Conformità GDPR</a>
+      <a href="javascript:void(0)">Note Legali</a>
+      <a href="javascript:void(0)">Supporto</a>
+    </div>
+  </footer>
+</div>

@@ -1,0 +1,103 @@
+<div class="login-wrapper">
+  <!-- ── Brand panel (left) ── -->
+  <div class="login-brand-panel">
+    <div class="brand-pattern"></div>
+    <div class="brand-content">
+      <img src="logo-cefla-quadrato.png" alt="Cefla Logo" class="brand-logo-hero" />
+      <h1 class="brand-title">GDPR Compliance<br />Portal</h1>
+      <p class="brand-tagline">Gestione centralizzata della conformità privacy e protezione dati personali</p>
+      <div class="brand-features">
+        <div class="brand-feature">
+          <svg class="feature-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            <rect x="10" y="10" width="4" height="5" rx="1" />
+            <circle cx="12" cy="8" r="1.5" />
+          </svg>
+          <span>Cancellazione sicura</span>
+        </div>
+        <div class="brand-feature">
+          <svg class="feature-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" />
+            <rect x="8" y="2" width="8" height="4" rx="1" />
+            <line x1="9" y1="10" x2="15" y2="10" />
+            <line x1="9" y1="14" x2="15" y2="14" />
+            <line x1="9" y1="18" x2="12" y2="18" />
+          </svg>
+          <span>Audit trail completo</span>
+        </div>
+        <div class="brand-feature">
+          <svg class="feature-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+          <span>Operazioni in tempo reale</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Login form (right) ── -->
+  <div class="login-form-panel">
+    <div class="login-card">
+      <div class="card-header">
+        <img src="logo-cefla-quadrato.png" alt="Cefla" class="card-logo" />
+        <h2>Bentornato</h2>
+        <p>Inserisci la tua email aziendale per accedere</p>
+      </div>
+
+      <form (ngSubmit)="login()" class="login-form">
+        <div class="input-group" [class.focused]="emailFocused()" [class.has-value]="email().trim().length > 0">
+          <label for="email">Email aziendale</label>
+          <div class="input-wrapper">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="2" y="4" width="20" height="16" rx="3" />
+              <path d="M2 7l10 7 10-7" />
+            </svg>
+            <input
+              id="email"
+              type="email"
+              placeholder="nome@cefla.com"
+              [ngModel]="email()"
+              (ngModelChange)="email.set($event)"
+              (focus)="emailFocused.set(true)"
+              (blur)="emailFocused.set(false)"
+              name="email"
+              autocomplete="email"
+              required
+            />
+          </div>
+        </div>
+
+        @if (errorMessage()) {
+          <div class="error-banner">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span>{{ errorMessage() }}</span>
+          </div>
+        }
+
+        <button
+          type="submit"
+          class="btn-login"
+          [disabled]="!email().trim() || loading()"
+        >
+          @if (loading()) {
+            <span class="spinner"></span>
+            <span>Verifica in corso…</span>
+          } @else {
+            <span>Accedi al portale</span>
+            <svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          }
+        </button>
+      </form>
+
+      <div class="card-footer">
+        <p>Accesso riservato al personale autorizzato Cefla S.C.</p>
+      </div>
+    </div>
+  </div>
+</div>
