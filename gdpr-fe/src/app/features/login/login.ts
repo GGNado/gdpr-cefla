@@ -15,18 +15,21 @@ export class Login {
   private readonly authService = inject(AuthService);
 
   protected email = signal('');
+  protected password = signal('');
   protected emailFocused = signal(false);
+  protected passwordFocused = signal(false);
   protected loading = signal(false);
   protected errorMessage = signal('');
 
   login(): void {
-    const value = this.email().trim();
-    if (!value || this.loading()) return;
+    const emailVal = this.email().trim();
+    const passwordVal = this.password().trim();
+    if (!emailVal || !passwordVal || this.loading()) return;
 
     this.loading.set(true);
     this.errorMessage.set('');
 
-    this.authService.login(value).subscribe({
+    this.authService.login(emailVal, passwordVal).subscribe({
       next: (valid) => {
         this.loading.set(false);
         if (valid) {

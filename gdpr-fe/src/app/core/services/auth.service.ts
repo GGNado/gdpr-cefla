@@ -24,34 +24,24 @@ export class AuthService {
   /** Computed: convenience boolean for guards/interceptors/templates */
   readonly isAuthenticated = computed(() => this._currentUser() !== null);
 
-  /**
-   * Validates an email against the backend and authenticates the user.
-   *
-   * Currently uses a mock implementation. When the BE endpoint is ready,
-   * replace the mock Observable with:
-   *   this.http.post<{ valid: boolean; token?: string }>(`${this.baseUrl}/api/auth/validate-email`, { email })
-   */
-  login(email: string): Observable<boolean> {
-    // ── Mock implementation ──────────────────────────────────────────
-    // Simulates a BE call: any well-formed email is considered valid.
-    const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    const mockResponse$ = of({ valid: isValid, token: isValid ? 'mock-jwt-token' : null }).pipe(
-      delay(800)
-    );
-    // ── End mock ─────────────────────────────────────────────────────
+  login(email: string, password?: string): Observable<boolean> {
+    // In questa fase, il frontend si aspetta 'username' o 'email' nel payload.
+    // L'API Spring richiede 'usernameOrEmail' e 'password'.
+    const payload = {
+      usernameOrEmail: email,
+      password: password || 'Password123!' // Fallback di sicurezza se omesso in questo step
+    };
 
-    return mockResponse$.pipe(
+    return this.http.post<any>(`${this.baseUrl}/api/auth/signin`, payload).pipe(
       tap((res) => {
-        if (res.valid) {
-          this._currentUser.set(email);
-          this._token.set(res.token ?? null);
-          localStorage.setItem(STORAGE_KEY_EMAIL, email);
-          if (res.token) {
-            localStorage.setItem(STORAGE_KEY_TOKEN, res.token);
-          }
+        if (res && res.token) {
+          this._currentUser.set(res.email || email);
+          this._token.set(res.token);
+          localStorage.setItem(STORAGE_KEY_EMAIL, res.email || email);
+          localStorage.setItem(STORAGE_KEY_TOKEN, res.token);
         }
       }),
-      map((res) => res.valid),
+      map((res) => !!res.token),
       catchError((err) => {
         console.error('[AuthService] Login failed:', err);
         return throwError(() => err);

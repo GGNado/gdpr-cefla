@@ -10,20 +10,12 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
 
   // Clone the request and add auth headers if user is authenticated
-  let authReq = req;
-  const email = authService.currentUser();
   const token = authService.token();
-
-  if (email) {
+  let authReq = req;
+  if (token) {
     const headers: Record<string, string> = {
-      'X-User-Email': email
+      'Authorization': `Bearer ${token}`
     };
-
-    // Add Authorization header when a real token is available
-    if (token && token !== 'mock-jwt-token') {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
     authReq = req.clone({ setHeaders: headers });
   }
 
