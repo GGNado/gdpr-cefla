@@ -2,7 +2,7 @@ package com.cefla.iot.gdpr.service;
 
 import java.util.List;
 
-import com.cefla.iot.gdpr.entity.DeleteLog;
+import com.cefla.iot.gdpr.entity.primary.DeleteLog;
 
 public interface DeleteLogService {
     DeleteLog save(DeleteLog deleteLog);

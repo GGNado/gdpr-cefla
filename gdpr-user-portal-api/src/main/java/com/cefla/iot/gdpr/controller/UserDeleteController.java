@@ -1,13 +1,13 @@
 package com.cefla.iot.gdpr.controller;
 
-import com.cefla.iot.gdpr.entity.DeleteLog;
+import com.cefla.iot.gdpr.entity.primary.DeleteLog;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-import com.cefla.iot.gdpr.entity.UserDelete;
+import com.cefla.iot.gdpr.entity.primary.UserDelete;
 import com.cefla.iot.gdpr.service.UserDeleteService;
 
 @RestController

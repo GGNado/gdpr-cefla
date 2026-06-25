@@ -1,15 +1,15 @@
 package com.cefla.iot.gdpr.service.impl;
 
-import com.cefla.iot.gdpr.entity.DeleteLog;
-import com.cefla.iot.gdpr.repository.DeleteLogRepository;
+import com.cefla.iot.gdpr.entity.primary.DeleteLog;
+import com.cefla.iot.gdpr.repository.primary.DeleteLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-import com.cefla.iot.gdpr.entity.UserDelete;
-import com.cefla.iot.gdpr.repository.UserDeleteRepository;
+import com.cefla.iot.gdpr.entity.primary.UserDelete;
+import com.cefla.iot.gdpr.repository.primary.UserDeleteRepository;
 import com.cefla.iot.gdpr.service.UserDeleteService;
 
 @Service

@@ -5,7 +5,7 @@ import org.mapstruct.Mapping;
 
 import java.util.List;
 
-import com.cefla.iot.gdpr.entity.DeleteLog;
+import com.cefla.iot.gdpr.entity.primary.DeleteLog;
 import com.cefla.iot.gdpr.dto.request.deletelog.DeleteLogCreateRequestDTO;
 import com.cefla.iot.gdpr.dto.request.deletelog.DeleteLogUpdateRequestDTO;
 import com.cefla.iot.gdpr.dto.response.deletelog.DeleteLogFindDTO;

@@ -1,7 +1,21 @@
 -- =====================================================================
--- SCRIPT COMPLETO DI INSTALLAZIONE (PROD / QUALITY)
+-- SCRIPT COMPLETO DI INSTALLAZIONE E AGGIORNAMENTO (PROD / QUALITY)
 -- Progetto: Cancellazione Utente GDPR
+-- Versione: Definitiva (Auth DB + Process Log + Batch 30 days)
 -- =====================================================================
+
+-- =====================================================================
+-- 0. TABELLA UTENZE ADMIN (gdpr_admin_users)
+-- =====================================================================
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'gdpr_admin_users')
+BEGIN
+    CREATE TABLE [dbo].[gdpr_admin_users] (
+        [Username] VARCHAR(100) PRIMARY KEY,
+        [PasswordHash] VARCHAR(255) NOT NULL,
+        [Role] VARCHAR(50) NOT NULL
+    );
+END
+GO
 
 -- =====================================================================
 -- 1. TABELLA DI LOG (DeleteLog)
@@ -13,10 +27,11 @@ BEGIN
         [LogFileName] VARCHAR(255) NULL,
         [TableName] VARCHAR(100) NULL,
         [RecordId] VARCHAR(100) NULL,
-        [DeletedAt] DATETIME DEFAULT GETDATE(),
+        [DeletedAt] DATETIME CONSTRAINT DF_DeleteLog_DeletedAt DEFAULT GETDATE(),
         [RowsAffected] INT NULL,
         [ErrorMessage] VARCHAR(MAX) NULL,
-        [Status] VARCHAR(50) NULL
+        [Status] VARCHAR(50) NULL,
+        [Process] VARCHAR(50) NULL
     );
 END
 ELSE
@@ -24,6 +39,16 @@ BEGIN
     IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('DeleteLog') AND name = 'Status')
     BEGIN
         ALTER TABLE [dbo].[DeleteLog] ADD [Status] VARCHAR(50) NULL;
+    END
+
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('DeleteLog') AND name = 'Process')
+    BEGIN
+        ALTER TABLE [dbo].[DeleteLog] ADD [Process] VARCHAR(50) NULL;
+    END
+
+    IF NOT EXISTS (SELECT * FROM sys.default_constraints WHERE parent_object_id = OBJECT_ID('DeleteLog') AND parent_column_id = (SELECT column_id FROM sys.columns WHERE object_id = OBJECT_ID('DeleteLog') AND name = 'DeletedAt'))
+    BEGIN
+        ALTER TABLE [dbo].[DeleteLog] ADD CONSTRAINT [DF_DeleteLog_DeletedAt] DEFAULT GETDATE() FOR [DeletedAt];
     END
 END
 GO
@@ -103,7 +128,8 @@ GO
 -- 3. PROCEDURA SINGOLA DI CANCELLAZIONE (DeleteUser)
 -- =====================================================================
 CREATE OR ALTER PROCEDURE [dbo].[DeleteUser] 
-    @idUtente UNIQUEIDENTIFIER 
+    @idUtente UNIQUEIDENTIFIER,
+    @Process VARCHAR(50) = 'ManualRequest'
 AS 
 BEGIN 
     SET NOCOUNT ON;
@@ -116,75 +142,80 @@ BEGIN
         BEGIN TRANSACTION;
 
         -- 1. Verifica esistenza
-        SELECT @idAccountEndUser = IdAccountEndUser FROM dbo.portale_utente WHERE IdUtente = @idUtente;
-        IF @idAccountEndUser IS NULL
+        IF NOT EXISTS (SELECT 1 FROM dbo.portale_utente WHERE IdUtente = @idUtente)
         BEGIN
             THROW 50000, 'Utente non trovato.', 1;
         END
 
+        SELECT @idAccountEndUser = IdAccountEndUser FROM dbo.portale_utente WHERE IdUtente = @idUtente;
+
         -- 2. Rimozione utenti Diva Slave collegati
-        DELETE FROM dbo.portale_utente 
-        WHERE IdAccountEndUser = @idAccountEndUser 
-          AND AbilitatoDiva = 1 
-          AND (IsMasterDiva = 0 OR IsMasterDiva IS NULL)
-          AND IdUtente <> @idUtente;
-        SET @RowsAffected = @@ROWCOUNT;
-        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status) VALUES (@LogId, 'portale_utente_collegati_diva', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK');
+        IF @idAccountEndUser IS NOT NULL
+        BEGIN
+            DELETE FROM dbo.portale_utente 
+            WHERE IdAccountEndUser = @idAccountEndUser 
+              AND AbilitatoDiva = 1 
+              AND (IsMasterDiva = 0 OR IsMasterDiva IS NULL)
+              AND IdUtente <> @idUtente;
+            
+            SET @RowsAffected = @@ROWCOUNT;
+            IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status, Process) VALUES (@LogId, 'portale_utente_collegati_diva', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK', @Process);
+        END
 
         -- 3. Cancellazione 9 Tabelle figlie
         DELETE FROM dbo.account_portale_utente WHERE IdUtente = @idUtente;
         SET @RowsAffected = @@ROWCOUNT;
-        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status) VALUES (@LogId, 'account_portale_utente', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK');
+        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status, Process) VALUES (@LogId, 'account_portale_utente', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK', @Process);
 
         DELETE FROM dbo.portale_utente_macchina WHERE IdUtente = @idUtente;
         SET @RowsAffected = @@ROWCOUNT;
-        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status) VALUES (@LogId, 'portale_utente_macchina', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK');
+        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status, Process) VALUES (@LogId, 'portale_utente_macchina', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK', @Process);
 
         DELETE FROM dbo.portale_utente_pagina WHERE IdUtente = @idUtente;
         SET @RowsAffected = @@ROWCOUNT;
-        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status) VALUES (@LogId, 'portale_utente_pagina', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK');
+        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status, Process) VALUES (@LogId, 'portale_utente_pagina', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK', @Process);
 
         DELETE FROM dbo.portale_utente_pagina_azione WHERE IdUtente = @idUtente;
         SET @RowsAffected = @@ROWCOUNT;
-        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status) VALUES (@LogId, 'portale_utente_pagina_azione', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK');
+        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status, Process) VALUES (@LogId, 'portale_utente_pagina_azione', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK', @Process);
 
         DELETE FROM dbo.portale_utente_permission WHERE IdUtente = @idUtente;
         SET @RowsAffected = @@ROWCOUNT;
-        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status) VALUES (@LogId, 'portale_utente_permission', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK');
+        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status, Process) VALUES (@LogId, 'portale_utente_permission', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK', @Process);
 
         DELETE FROM dbo.portale_utente_ruolo WHERE IdUtente = @idUtente;
         SET @RowsAffected = @@ROWCOUNT;
-        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status) VALUES (@LogId, 'portale_utente_ruolo', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK');
+        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status, Process) VALUES (@LogId, 'portale_utente_ruolo', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK', @Process);
 
         DELETE FROM dbo.portale_utente_account_pagina WHERE IdUtente = @idUtente;
         SET @RowsAffected = @@ROWCOUNT;
-        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status) VALUES (@LogId, 'portale_utente_account_pagina', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK');
+        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status, Process) VALUES (@LogId, 'portale_utente_account_pagina', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK', @Process);
 
         DELETE FROM dbo.portale_utente_account_pagina_azione WHERE IdUtente = @idUtente;
         SET @RowsAffected = @@ROWCOUNT;
-        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status) VALUES (@LogId, 'portale_utente_account_pagina_azione', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK');
+        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status, Process) VALUES (@LogId, 'portale_utente_account_pagina_azione', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK', @Process);
 
         DELETE FROM dbo.portale_utente_account_ruolo WHERE IdUtente = @idUtente;
         SET @RowsAffected = @@ROWCOUNT;
-        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status) VALUES (@LogId, 'portale_utente_account_ruolo', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK');
+        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status, Process) VALUES (@LogId, 'portale_utente_account_ruolo', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK', @Process);
 
         -- 4. Anonimizzazione 3 Tabelle
         UPDATE dbo.licenza SET IdUtenteAcquisto = NULL WHERE IdUtenteAcquisto = @idUtente;
         SET @RowsAffected = @@ROWCOUNT;
-        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status) VALUES (@LogId, 'licenza', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK_ANONIMIZED');
+        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status, Process) VALUES (@LogId, 'licenza', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK_ANONIMIZED', @Process);
 
         UPDATE dbo.macchina_componente SET IdUtenteAutorizzazione = NULL WHERE IdUtenteAutorizzazione = @idUtente;
         SET @RowsAffected = @@ROWCOUNT;
-        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status) VALUES (@LogId, 'macchina_componente', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK_ANONIMIZED');
+        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status, Process) VALUES (@LogId, 'macchina_componente', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK_ANONIMIZED', @Process);
 
         UPDATE dbo.ticket SET UserId = NULL WHERE UserId = @idUtente;
         SET @RowsAffected = @@ROWCOUNT;
-        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status) VALUES (@LogId, 'ticket', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK_ANONIMIZED');
+        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status, Process) VALUES (@LogId, 'ticket', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK_ANONIMIZED', @Process);
 
         -- 5. Cancellazione Record Principale
         DELETE FROM dbo.portale_utente WHERE IdUtente = @idUtente;
         SET @RowsAffected = @@ROWCOUNT;
-        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status) VALUES (@LogId, 'portale_utente', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK');
+        IF @RowsAffected > 0 INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, RowsAffected, Status, Process) VALUES (@LogId, 'portale_utente', CAST(@idUtente AS VARCHAR(50)), @RowsAffected, 'OK', @Process);
 
         COMMIT TRANSACTION;
     END TRY
@@ -192,8 +223,8 @@ BEGIN
         IF @@TRANCOUNT > 0
             ROLLBACK TRANSACTION;
 
-        INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, ErrorMessage, Status) 
-        VALUES (@LogId, 'ERROR', CAST(@idUtente AS VARCHAR(50)), ERROR_MESSAGE(), 'ERROR');
+        INSERT INTO dbo.DeleteLog (LogFileName, TableName, RecordId, ErrorMessage, Status, Process) 
+        VALUES (@LogId, 'ERROR', CAST(@idUtente AS VARCHAR(50)), ERROR_MESSAGE(), 'ERROR', @Process);
         
         THROW;
     END CATCH
@@ -201,9 +232,14 @@ END
 GO
 
 -- =====================================================================
--- 4. PROCEDURA BATCH DI AUTO-PULIZIA (DeleteUserByLastLogin)
+-- 4. PROCEDURA BATCH DI AUTO-PULIZIA (DeleteUserByLastActiveLicense)
 -- =====================================================================
-CREATE OR ALTER PROCEDURE [dbo].[DeleteUserByLastLogin]
+-- Rimuoviamo la vecchia se esiste
+IF OBJECT_ID('dbo.DeleteUserByLastLogin', 'P') IS NOT NULL
+    DROP PROCEDURE [dbo].[DeleteUserByLastLogin];
+GO
+
+CREATE OR ALTER PROCEDURE [dbo].[DeleteUserByLastActiveLicense]
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -221,7 +257,7 @@ BEGIN
             WHERE l.IdUtenteAcquisto = pu.IdUtente 
             ORDER BY DataScadenza DESC
         ) lic
-        WHERE (lic.DataScadenza IS NULL OR lic.DataScadenza < DATEADD(DAY, -1095, GETDATE()))
+        WHERE (lic.DataScadenza IS NULL OR lic.DataScadenza < DATEADD(DAY, -30, GETDATE()))
           AND (pu.IsMasterDiva = 1 OR pu.IsMasterDiva IS NULL);
           
     OPEN cur_users;
@@ -230,13 +266,13 @@ BEGIN
     WHILE @@FETCH_STATUS = 0
     BEGIN
         BEGIN TRY
-            EXEC [dbo].[DeleteUser] @idUtente;
+            EXEC [dbo].[DeleteUser] @idUtente, 'ScheduledBatch';
             SET @successCount = @successCount + 1;
         END TRY
         BEGIN CATCH
             SET @errorCount = @errorCount + 1;
-            INSERT INTO [dbo].[DeleteLog] (LogFileName, TableName, RecordId, ErrorMessage, Status)
-            VALUES ('Batch_DeleteUserByLastLogin', 'ERROR', CAST(@idUtente AS VARCHAR(50)), ERROR_MESSAGE(), 'ERROR');
+            INSERT INTO [dbo].[DeleteLog] (LogFileName, TableName, RecordId, ErrorMessage, Status, Process)
+            VALUES ('Batch_DeleteUserByLastActiveLicense', 'ERROR', CAST(@idUtente AS VARCHAR(50)), ERROR_MESSAGE(), 'ERROR', 'ScheduledBatch');
         END CATCH
         
         FETCH NEXT FROM cur_users INTO @idUtente;
@@ -246,8 +282,8 @@ BEGIN
     DEALLOCATE cur_users;
     
     DECLARE @msg VARCHAR(500) = 'Batch terminato. Successi: ' + CAST(@successCount AS VARCHAR) + ', Errori: ' + CAST(@errorCount AS VARCHAR);
-    INSERT INTO [dbo].[DeleteLog] (LogFileName, TableName, RecordId, RowsAffected, Status, ErrorMessage)
-    VALUES ('Batch_DeleteUserByLastLogin', 'BATCH_SUMMARY', 'BATCH', @successCount, IIF(@errorCount=0, 'OK', 'WARNING'), @msg);
+    INSERT INTO [dbo].[DeleteLog] (LogFileName, TableName, RecordId, RowsAffected, Status, ErrorMessage, Process)
+    VALUES ('Batch_DeleteUserByLastActiveLicense', 'BATCH_SUMMARY', 'BATCH', @successCount, IIF(@errorCount=0, 'OK', 'WARNING'), @msg, 'ScheduledBatch');
 END
 GO
 
@@ -272,7 +308,7 @@ BEGIN
         WHERE l.IdUtenteAcquisto = pu.IdUtente 
         ORDER BY DataScadenza DESC
     ) lic
-    WHERE (lic.DataScadenza IS NULL OR lic.DataScadenza < DATEADD(DAY, -1095, GETDATE()))
+    WHERE (lic.DataScadenza IS NULL OR lic.DataScadenza < DATEADD(DAY, -30, GETDATE()))
       AND (pu.IsMasterDiva = 1 OR pu.IsMasterDiva IS NULL);
 END
 GO

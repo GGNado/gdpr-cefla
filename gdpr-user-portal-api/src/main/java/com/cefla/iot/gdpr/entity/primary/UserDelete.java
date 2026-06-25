@@ -1,4 +1,4 @@
-package com.cefla.iot.gdpr.entity;
+package com.cefla.iot.gdpr.entity.primary;
 
 import lombok.*;
 import jakarta.persistence.*;

@@ -1,4 +1,4 @@
-package com.cefla.iot.gdpr.entity;
+package com.cefla.iot.gdpr.entity.primary;
 
 import lombok.*;
 import jakarta.persistence.*;
@@ -34,4 +34,10 @@ public class DeleteLog {
 
     @Column(name = "ErrorMessage", columnDefinition = "VARCHAR(MAX)")
     private String errorMessage;
+
+    @Column(name = "Status", length = 50)
+    private String status;
+    
+    @Column(name = "Process", length = 50)
+    private String process;
 }

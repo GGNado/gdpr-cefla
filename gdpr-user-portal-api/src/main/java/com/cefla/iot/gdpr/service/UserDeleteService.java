@@ -2,7 +2,7 @@ package com.cefla.iot.gdpr.service;
 
 import java.util.List;
 
-import com.cefla.iot.gdpr.entity.UserDelete;
+import com.cefla.iot.gdpr.entity.primary.UserDelete;
 
 public interface UserDeleteService {
     void deleteUsersByLastLogin();

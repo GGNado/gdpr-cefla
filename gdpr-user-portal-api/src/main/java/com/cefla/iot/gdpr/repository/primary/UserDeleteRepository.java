@@ -1,9 +1,9 @@
-package com.cefla.iot.gdpr.repository;
+package com.cefla.iot.gdpr.repository.primary;
 
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
-import com.cefla.iot.gdpr.entity.UserDelete;
+import com.cefla.iot.gdpr.entity.primary.UserDelete;
 import java.util.List;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -21,7 +21,7 @@ public interface UserDeleteRepository extends JpaRepository<UserDelete, String> 
     // Esegue la SP batch schedulata
     @Modifying
     @Transactional
-    @Query(value = "EXEC dbo.DeleteUserByLastLogin", nativeQuery = true)
+    @Query(value = "EXEC dbo.DeleteUserByLastActiveLicense", nativeQuery = true)
     void callDeleteUserBatchSp();
 
     List<UserDelete> findTop10ByUsernameContainingIgnoreCaseOrNomeContainingIgnoreCaseOrCognomeContainingIgnoreCaseOrEmailContainingIgnoreCase(String username, String nome, String cognome, String email);

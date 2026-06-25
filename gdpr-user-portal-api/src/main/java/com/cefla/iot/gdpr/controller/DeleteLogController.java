@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-import com.cefla.iot.gdpr.entity.DeleteLog;
+import com.cefla.iot.gdpr.entity.primary.DeleteLog;
 import com.cefla.iot.gdpr.service.DeleteLogService;
 
 @RestController

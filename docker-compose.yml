@@ -1,6 +1,20 @@
-version: "3.8"
+version: "3.3"
 
 services:
+  # ---- Auth Database Postgres ----
+  auth-db:
+    image: postgres:15-alpine
+    container_name: auth-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: authuser
+      POSTGRES_PASSWORD: AuthPassword2026!
+      POSTGRES_DB: authdb
+    ports:
+      - "5432:5432"
+    networks:
+      - gdpr-network
+
   # ---- Backend Spring Boot ----
   gdpr-api:
     build:
@@ -10,11 +24,18 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+    depends_on:
+      - auth-db
     environment:
       # Sovrascrivi queste variabili per puntare al DB della VM
-      SPRING_DATASOURCE_URL: "jdbc:sqlserver://host.docker.internal:1433;databaseName=cefladb_iot;encrypt=false;"
-      SPRING_DATASOURCE_USERNAME: "sa"
-      SPRING_DATASOURCE_PASSWORD: "Password123!"
+      SPRING_DATASOURCE_URL: "jdbc:sqlserver://10.1.1.4:1433;databaseName=cefladb_iot;encrypt=false;"
+      SPRING_DATASOURCE_USERNAME: "luigi.massa"
+      SPRING_DATASOURCE_PASSWORD: "nI4h7Hukvp2vecub3DThDRF1AVGNsISG"
+      
+      # DB di Sicurezza (Auth DB locale)
+      AUTH_DATASOURCE_URL: "jdbc:postgresql://auth-db:5432/authdb"
+      AUTH_DATASOURCE_USERNAME: "authuser"
+      AUTH_DATASOURCE_PASSWORD: "AuthPassword2026!"
     networks:
       - gdpr-network
 
@@ -26,7 +47,7 @@ services:
     container_name: gdpr-fe
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "8081:80"
     depends_on:
       - gdpr-api
     networks:
